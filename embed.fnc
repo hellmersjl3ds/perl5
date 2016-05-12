@@ -2858,6 +2858,10 @@ Apnod	|Size_t	|my_strlcat	|NULLOK char *dst|NULLOK const char *src|Size_t size
 Apnod     |Size_t |my_strlcpy     |NULLOK char *dst|NULLOK const char *src|Size_t size
 #endif
 
+#ifndef HAS_MKSTEMP
+pno	|int	|my_mkstemp	|NN char *templte
+#endif
+
 Apdn	|bool	|isinfnan	|NV nv
 p	|bool	|isinfnansv	|NN SV *sv
 
