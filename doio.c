@@ -854,14 +854,38 @@ S_openindirtemp(pTHX_ GV *gv, SV *orig_name, SV *temp_out_name) {
     return do_openn(gv, "+>&", 3, 0, 0, 0, fp, NULL, 0);
 }
 
-/* used only for it's address.
-   Magic of this type has an AV containing the following:
+static int
+S_argvout_free(pTHX_ SV *sv, MAGIC *mg) {
+    SV **temp_psv;
+
+    PERL_UNUSED_ARG(sv);
+
+    assert(mg->mg_obj && SvTYPE(mg->mg_obj) == SVt_ARRAY);
+    temp_psv = av_fetch((AV*)mg->mg_obj, 1, FALSE);
+    if (temp_psv && *temp_psv && SvOK(*temp_psv)) {
+        UNLINK(SvPVX(*temp_psv));
+    }
+
+    return 0;
+}
+
+/* Magic of this type has an AV containing the following:
    0: name of the backup file (if any)
    1: name of the temp output file
    2: name of the original file
    3: file mode of the original file
  */
-static const MGVTBL argvout_vtbl = { NULL };
+static const MGVTBL argvout_vtbl =
+    {
+        NULL, /* svt_get */
+        NULL, /* svt_set */
+        NULL, /* svt_len */
+        NULL, /* svt_clear */
+        S_argvout_free, /* svt_free */
+        NULL, /* svt_copy */
+        NULL, /* svt_dup */
+        NULL  /* svt_local */
+    };
 
 PerlIO *
 Perl_nextargv(pTHX_ GV *gv, bool nomagicopen)
@@ -1181,6 +1205,8 @@ Perl_do_close(pTHX_ GV *gv, bool not_implicit)
                            SvPVX(*temp_psv), Strerror(errno));
             }
         }
+        /* ensure the magic clean up code doesn't try to delete the work file again */
+        (void)av_store((AV*)mg->mg_obj, 1, &PL_sv_undef);
         mg_freeext((SV*)io, PERL_MAGIC_uvar, &argvout_vtbl);
     }
     else {
