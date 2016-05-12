@@ -1122,24 +1122,46 @@ Perl_do_close(pTHX_ GV *gv, bool not_implicit)
             }
 #endif
             if (back_psv && *back_psv) {
-                /* TODO: handle systems without rename */
-                /* for systems *with* rename, consider attemptting to link the backup to the original so that the new file goes from the old file to the new file without a transition of no file */
-                if (PerlLIO_rename(orig_pv, SvPVX(*back_psv)) < 0) {
-                    if (!not_implicit) {
-                        Perl_croak(aTHX_ "Can't rename %s to %s: %s, skipping file",
-                                   SvPVX(*orig_psv), SvPVX(*back_psv), Strerror(errno));
+#if defined(HAS_LINK) && !defined(DOSISH) && !defined(__CYGWIN__) && defined(HAS_RENAME)
+                if (link(orig_pv, SvPVX(*back_psv)) < 0)
+#endif
+                {
+#ifdef HAS_RENAME
+                    if (PerlLIO_rename(orig_pv, SvPVX(*back_psv)) < 0) {
+                        if (!not_implicit) {
+                            Perl_croak(aTHX_ "Can't rename %s to %s: %s, skipping file",
+                                       SvPVX(*orig_psv), SvPVX(*back_psv), Strerror(errno));
+                        }
+                        /* should we warn here? */
+                        goto abort_inplace;
                     }
-                    /* should we warn here? */
-                    goto abort_inplace;
+#else
+                    (void)UNLINK(SvPVX(*back_psv));
+                    if (link(orig_pv, SvPVX(*back_psv))) {
+                        if (!not_implicit) {
+                            Perl_croak(aTHX_ "Can't rename %s to %s: %s, skipping file",
+                                       SvPVX(*orig_psv), SvPVX(*back_psv), Strerror(errno));
+                        }
+                        goto abort_inplace;
+                    }
+                    /* we need to use link() to get the temp into place too, and linK()
+                       fails if the new link name exists */
+                    (void)UNLINK(orig_pv);
+#endif
                 }
             }
-#if defined(DOSISH) || defined(__CYGWIN__)
+#if defined(DOSISH) || defined(__CYGWIN__) || !defined(HAS_RENAME)
             else {
                 UNLINK(orig_pv);
             }
 #endif
-            /* TODO: handle systems without rename() */
-            if (PerlLIO_rename(SvPVX(*temp_psv), orig_pv) < 0) {
+            if (
+#ifdef HAS_RENAME
+                PerlLIO_rename(SvPVX(*temp_psv), orig_pv) < 0
+#else
+                link(SvPVX(*temp_psv), orig_pv) < 0
+#endif
+                ) {
                 if (!not_implicit) {
                     Perl_croak(aTHX_ "Can't rename in-place work file '%s' to '%s': %s\n",
                                SvPVX(*temp_psv), SvPVX(*orig_psv), Strerror(errno));
@@ -1148,6 +1170,9 @@ Perl_do_close(pTHX_ GV *gv, bool not_implicit)
                 UNLINK(SvPVX_const(*temp_psv));
                 retval = FALSE;
             }
+#ifndef HAS_RENAME
+            UNLINK(SvPVX(*temp_psv));
+#endif
         }
         else {
             UNLINK(SvPVX_const(*temp_psv));
