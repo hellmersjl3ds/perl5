@@ -842,11 +842,7 @@ S_openindirtemp(pTHX_ GV *gv, SV *orig_name, SV *temp_out_name) {
     else
         sv_setpvs(temp_out_name, "XXXXXXXX");
 
-#ifdef HAS_MKSTEMP
-    fd = mkstemp(SvPVX(temp_out_name));
-#else
     fd = Perl_my_mkstemp(SvPVX(temp_out_name));
-#endif
 
     if (fd < 0)
         return FALSE;
