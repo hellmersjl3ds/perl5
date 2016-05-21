@@ -7548,7 +7548,7 @@ Perl_yylex(pTHX)
 		    p = scan_word(p, PL_tokenbuf, sizeof PL_tokenbuf, TRUE, &len);
 		    p = skipspace(p);
 		}
-		if (*p != '$')
+		if (*p != '$' && *p != '\\')
 		    Perl_croak(aTHX_ "Missing $ on loop variable");
 	    }
 	    OPERATOR(FOR);
