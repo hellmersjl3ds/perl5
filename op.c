@@ -3707,6 +3707,7 @@ S_my_kid(pTHX_ OP *o, OP *attrs, OP **imopsp)
 	    "Declaring references is experimental");
 	/* Kid is a nulled OP_LIST, handled above.  */
 	my_kid(cUNOPo->op_first, attrs, imopsp);
+	return o;
     }
     else if (type != OP_PADSV &&
 	     type != OP_PADAV &&
