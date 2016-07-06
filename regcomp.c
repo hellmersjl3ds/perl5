@@ -19801,32 +19801,33 @@ S_put_range(pTHX_ SV *sv, UV start, const UV end, const bool allow_literals)
         if (   start <= end
             && (isMNEMONIC_CNTRL(start) || isMNEMONIC_CNTRL(end)))
         {
-        while (isMNEMONIC_CNTRL(start) && start <= end) {
-            put_code_point(sv, start);
-            start++;
-        }
-
-        /* If this didn't take care of the whole range ... */
-        if (start <= end) {
-
-            /* Look backwards from the end to find the final non-mnemonic */
-            UV temp_end = end;
-            while (isMNEMONIC_CNTRL(temp_end)) {
-                temp_end--;
-            }
-
-            /* And separately output the interior range that doesn't start or
-             * end with mnemonics */
-            put_range(sv, start, temp_end, FALSE);
-
-            /* Then output the mnemonic trailing controls */
-            start = temp_end + 1;
-            while (start <= end) {
+            while (isMNEMONIC_CNTRL(start) && start <= end) {
                 put_code_point(sv, start);
                 start++;
             }
-            break;
-        }
+
+            /* If this didn't take care of the whole range ... */
+            if (start <= end) {
+
+                /* Look backwards from the end to find the final non-mnemonic
+                 * */
+                UV temp_end = end;
+                while (isMNEMONIC_CNTRL(temp_end)) {
+                    temp_end--;
+                }
+
+                /* And separately output the interior range that doesn't start
+                 * or end with mnemonics */
+                put_range(sv, start, temp_end, FALSE);
+
+                /* Then output the mnemonic trailing controls */
+                start = temp_end + 1;
+                while (start <= end) {
+                    put_code_point(sv, start);
+                    start++;
+                }
+                break;
+            }
         }
 
         /* As a final resort, output the range or subrange as hex. */
